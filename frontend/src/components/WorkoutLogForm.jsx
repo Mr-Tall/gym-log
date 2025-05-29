@@ -6,7 +6,9 @@ export default function WorkoutLogForm({ user }) {
   const [exercise, setExercise] = useState('');
   const [sets, setSets] = useState([{ weight: '', reps: '', toFailure: false }]);
   const [status, setStatus] = useState('');
+  const [loggedExercises, setLoggedExercises] = useState([]);
 
+  // Load or create today's workout
   useEffect(() => {
     const loadOrCreateWorkout = async () => {
       const today = new Date().toISOString().split('T')[0];
@@ -26,12 +28,12 @@ export default function WorkoutLogForm({ user }) {
       if (data) {
         setWorkoutId(data.id);
       } else {
-        // Create new workout
         const { data: newWorkout, error: insertError } = await supabase
           .from('workouts')
           .insert([{ user_id: user.id, date: today }])
           .select()
           .single();
+
         if (insertError) {
           console.error('Error creating workout:', insertError.message);
         } else {
@@ -42,6 +44,23 @@ export default function WorkoutLogForm({ user }) {
 
     if (user) loadOrCreateWorkout();
   }, [user]);
+
+  // Fetch exercises for today
+  useEffect(() => {
+    const fetchLoggedExercises = async () => {
+      if (!workoutId) return;
+
+      const { data: exercises, error } = await supabase
+        .from('exercises')
+        .select('id, name, sets (weight, reps, to_failure)')
+        .eq('workout_id', workoutId);
+
+      if (error) console.error('Fetch error:', error.message);
+      else setLoggedExercises(exercises);
+    };
+
+    fetchLoggedExercises();
+  }, [workoutId, status]);
 
   const handleChange = (i, field, value) => {
     const newSets = [...sets];
@@ -68,10 +87,9 @@ export default function WorkoutLogForm({ user }) {
     const setsWithExerciseId = sets.map(set => ({
       weight: set.weight,
       reps: set.reps,
-      to_failure: set.toFailure, // this matches your DB column
+      to_failure: set.toFailure,
       exercise_id: exerciseData.id,
     }));
-
 
     const { error: setsErr } = await supabase.from('sets').insert(setsWithExerciseId);
     if (setsErr) return console.error('Error saving sets:', setsErr.message);
@@ -82,43 +100,64 @@ export default function WorkoutLogForm({ user }) {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
-      <input
-        value={exercise}
-        onChange={(e) => setExercise(e.target.value)}
-        placeholder="Exercise name"
-        className="border w-full p-2"
-      />
-      {sets.map((set, i) => (
-        <div key={i} className="flex space-x-2">
-          <input
-            value={set.weight}
-            onChange={(e) => handleChange(i, 'weight', e.target.value)}
-            placeholder="Weight"
-            className="border p-2 w-1/3"
-          />
-          <input
-            value={set.reps}
-            onChange={(e) => handleChange(i, 'reps', e.target.value)}
-            placeholder="Reps"
-            className="border p-2 w-1/3"
-          />
-          <label className="flex items-center">
+    <>
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <input
+          value={exercise}
+          onChange={(e) => setExercise(e.target.value)}
+          placeholder="Exercise name"
+          className="border w-full p-2"
+        />
+        {sets.map((set, i) => (
+          <div key={i} className="flex space-x-2">
             <input
-              type="checkbox"
-              checked={set.toFailure}
-              onChange={(e) => handleChange(i, 'toFailure', e.target.checked)}
-              className="mr-1"
+              value={set.weight}
+              onChange={(e) => handleChange(i, 'weight', e.target.value)}
+              placeholder="Weight"
+              className="border p-2 w-1/3"
             />
-            Failure
-          </label>
+            <input
+              value={set.reps}
+              onChange={(e) => handleChange(i, 'reps', e.target.value)}
+              placeholder="Reps"
+              className="border p-2 w-1/3"
+            />
+            <label className="flex items-center">
+              <input
+                type="checkbox"
+                checked={set.toFailure}
+                onChange={(e) => handleChange(i, 'toFailure', e.target.checked)}
+                className="mr-1"
+              />
+              Failure
+            </label>
+          </div>
+        ))}
+        <div className="space-x-2">
+          <button type="button" onClick={addSet} className="bg-gray-300 px-3 py-1 rounded">+ Set</button>
+          <button type="submit" className="bg-blue-600 text-white px-3 py-1 rounded">Save</button>
         </div>
-      ))}
-      <div className="space-x-2">
-        <button type="button" onClick={addSet} className="bg-gray-300 px-3 py-1 rounded">+ Set</button>
-        <button type="submit" className="bg-blue-600 text-white px-3 py-1 rounded">Save</button>
-      </div>
-      {status && <p className="text-green-500">{status}</p>}
-    </form>
+        {status && <p className="text-green-500">{status}</p>}
+      </form>
+
+      {/* Display logged exercises */}
+      {loggedExercises.length > 0 && (
+        <div className="mt-8">
+          <h2 className="text-xl font-bold mb-4">Today's Exercises</h2>
+          {loggedExercises.map((ex) => (
+            <div key={ex.id} className="mb-6">
+              <h3 className="text-lg font-semibold">{ex.name}</h3>
+              <ul className="ml-4 list-disc">
+                {ex.sets.map((set, i) => (
+                  <li key={i}>
+                    {set.weight} lbs × {set.reps} {set.to_failure ? '(to failure)' : ''}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
+        </div>
+      )}
+    </>
   );
 }
