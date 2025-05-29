@@ -10,7 +10,7 @@ export default function WorkoutLogForm({ user }) {
   const [loggedExercises, setLoggedExercises] = useState([]);
 
   useEffect(() => {
-    const loadOrCreateWorkout = async () => {
+    const fetchExistingWorkout = async () => {
       const today = new Date().toISOString().split('T')[0];
 
       const { data, error } = await supabase
@@ -21,29 +21,17 @@ export default function WorkoutLogForm({ user }) {
         .single();
 
       if (error && error.code !== 'PGRST116') {
-        console.error('Error loading workout:', error.message);
+        console.error('Error fetching workout:', error.message);
         return;
       }
 
       if (data) {
         setWorkoutId(data.id);
         setTitle(data.title || '');
-      } else {
-        const { data: newWorkout, error: insertError } = await supabase
-          .from('workouts')
-          .insert([{ user_id: user.id, date: today, title: '' }])
-          .select()
-          .single();
-
-        if (insertError) {
-          console.error('Error creating workout:', insertError.message);
-        } else {
-          setWorkoutId(newWorkout.id);
-        }
       }
     };
 
-    if (user) loadOrCreateWorkout();
+    if (user) fetchExistingWorkout();
   }, [user]);
 
   useEffect(() => {
@@ -83,9 +71,25 @@ export default function WorkoutLogForm({ user }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!workoutId || !exercise) return;
+    if (!exercise) return;
 
-    if (title) await updateWorkoutTitle(title);
+    if (!workoutId) {
+      const today = new Date().toISOString().split('T')[0];
+      const { data: newWorkout, error } = await supabase
+        .from('workouts')
+        .insert([{ user_id: user.id, date: today, title }])
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Error creating workout on submit:', error.message);
+        return;
+      }
+
+      setWorkoutId(newWorkout.id);
+    } else if (title) {
+      await updateWorkoutTitle(title);
+    }
 
     let exerciseId = null;
     const existing = loggedExercises.find(
@@ -136,33 +140,33 @@ export default function WorkoutLogForm({ user }) {
     <>
       <form onSubmit={handleSubmit} className="space-y-4">
         <input
-          style={{ backgroundColor: '#fff', color: '#000' }}
           value={title}
           onChange={(e) => setTitle(e.target.value)}
           placeholder="Workout Title (e.g., Day 1)"
+          style={{ backgroundColor: '#ffffff', color: '#000000' }}
           className="w-full p-2 rounded placeholder-gray-500 border border-gray-300"
         />
         <input
-          style={{ backgroundColor: '#fff', color: '#000' }}
           value={exercise}
           onChange={(e) => setExercise(e.target.value)}
           placeholder="Exercise name"
+          style={{ backgroundColor: '#ffffff', color: '#000000' }}
           className="w-full p-2 rounded placeholder-gray-500 border border-gray-300"
         />
         {sets.map((set, i) => (
           <div key={i} className="flex space-x-2">
             <input
-              style={{ backgroundColor: '#fff', color: '#000' }}
               value={set.weight}
               onChange={(e) => handleChange(i, 'weight', e.target.value)}
               placeholder="Weight"
+              style={{ backgroundColor: '#ffffff', color: '#000000' }}
               className="p-2 rounded placeholder-gray-500 border border-gray-300 w-1/3"
             />
             <input
-              style={{ backgroundColor: '#fff', color: '#000' }}
               value={set.reps}
               onChange={(e) => handleChange(i, 'reps', e.target.value)}
               placeholder="Reps"
+              style={{ backgroundColor: '#ffffff', color: '#000000' }}
               className="p-2 rounded placeholder-gray-500 border border-gray-300 w-1/3"
             />
             <label className="flex items-center">
