@@ -3,6 +3,7 @@ import { supabase } from '../supabaseClient';
 
 export default function WorkoutLogForm({ user }) {
   const [workoutId, setWorkoutId] = useState(null);
+  const [title, setTitle] = useState('');
   const [exercise, setExercise] = useState('');
   const [sets, setSets] = useState([{ weight: '', reps: '', toFailure: false }]);
   const [refreshCount, setRefreshCount] = useState(0);
@@ -26,10 +27,11 @@ export default function WorkoutLogForm({ user }) {
 
       if (data) {
         setWorkoutId(data.id);
+        setTitle(data.title || '');
       } else {
         const { data: newWorkout, error: insertError } = await supabase
           .from('workouts')
-          .insert([{ user_id: user.id, date: today }])
+          .insert([{ user_id: user.id, date: today, title: '' }])
           .select()
           .single();
 
@@ -70,9 +72,20 @@ export default function WorkoutLogForm({ user }) {
     setSets([...sets, { weight: '', reps: '', toFailure: false }]);
   };
 
+  const updateWorkoutTitle = async (newTitle) => {
+    if (!workoutId) return;
+    const { error } = await supabase
+      .from('workouts')
+      .update({ title: newTitle })
+      .eq('id', workoutId);
+    if (error) console.error('Error updating title:', error.message);
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!workoutId || !exercise) return;
+
+    if (title) await updateWorkoutTitle(title);
 
     let exerciseId = null;
     const existing = loggedExercises.find(
@@ -122,6 +135,12 @@ export default function WorkoutLogForm({ user }) {
   return (
     <>
       <form onSubmit={handleSubmit} className="space-y-4">
+        <input
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          placeholder="Workout Title (e.g., Day 1)"
+          className="border w-full p-2"
+        />
         <input
           value={exercise}
           onChange={(e) => setExercise(e.target.value)}
