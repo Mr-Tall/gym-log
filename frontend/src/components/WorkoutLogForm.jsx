@@ -7,8 +7,8 @@ export default function WorkoutLogForm({ user }) {
   const [sets, setSets] = useState([{ weight: '', reps: '', toFailure: false }]);
   const [refreshCount, setRefreshCount] = useState(0);
   const [loggedExercises, setLoggedExercises] = useState([]);
+  const [dayType, setDayType] = useState('');
 
-  // Load or create today's workout
   useEffect(() => {
     const loadOrCreateWorkout = async () => {
       const today = new Date().toISOString().split('T')[0];
@@ -27,10 +27,12 @@ export default function WorkoutLogForm({ user }) {
 
       if (data) {
         setWorkoutId(data.id);
+        setDayType(data.day_type || '');
       } else {
+        if (!dayType) return;
         const { data: newWorkout, error: insertError } = await supabase
           .from('workouts')
-          .insert([{ user_id: user.id, date: today }])
+          .insert([{ user_id: user.id, date: today, day_type: dayType }])
           .select()
           .single();
 
@@ -43,9 +45,8 @@ export default function WorkoutLogForm({ user }) {
     };
 
     if (user) loadOrCreateWorkout();
-  }, [user]);
+  }, [user, dayType]);
 
-  // Fetch logged exercises
   useEffect(() => {
     const fetchLoggedExercises = async () => {
       if (!workoutId) return;
@@ -74,21 +75,31 @@ export default function WorkoutLogForm({ user }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!workoutId) return;
+    if (!workoutId || !exercise) return;
 
-    const { data: exerciseData, error: exErr } = await supabase
-      .from('exercises')
-      .insert([{ workout_id: workoutId, name: exercise }])
-      .select()
-      .single();
+    let exerciseId = null;
+    const existing = loggedExercises.find(
+      (e) => e.name.toLowerCase() === exercise.toLowerCase()
+    );
 
-    if (exErr) return console.error('Error adding exercise:', exErr.message);
+    if (existing) {
+      exerciseId = existing.id;
+    } else {
+      const { data: newEx, error } = await supabase
+        .from('exercises')
+        .insert([{ workout_id: workoutId, name: exercise }])
+        .select()
+        .single();
+
+      if (error) return console.error('Error adding new exercise:', error.message);
+      exerciseId = newEx.id;
+    }
 
     const setsWithExerciseId = sets.map(set => ({
       weight: set.weight,
       reps: set.reps,
       to_failure: set.toFailure,
-      exercise_id: exerciseData.id,
+      exercise_id: exerciseId,
     }));
 
     const { error: setsErr } = await supabase.from('sets').insert(setsWithExerciseId);
@@ -96,11 +107,29 @@ export default function WorkoutLogForm({ user }) {
 
     setExercise('');
     setSets([{ weight: '', reps: '', toFailure: false }]);
-    setRefreshCount(c => c + 1); // 🔁 trigger re-fetch
+    setRefreshCount(c => c + 1);
   };
 
   return (
     <>
+      {!workoutId && (
+        <div className="mb-4">
+          <label className="block font-semibold">What kind of day is this?</label>
+          <select
+            value={dayType}
+            onChange={(e) => setDayType(e.target.value)}
+            className="border p-2 w-full"
+          >
+            <option value="">Select a workout type</option>
+            <option value="push">Push</option>
+            <option value="pull">Pull</option>
+            <option value="legs">Legs</option>
+            <option value="full">Full Body</option>
+            <option value="rest">Rest</option>
+          </select>
+        </div>
+      )}
+
       <form onSubmit={handleSubmit} className="space-y-4">
         <input
           value={exercise}
@@ -139,7 +168,6 @@ export default function WorkoutLogForm({ user }) {
         </div>
       </form>
 
-      {/* Display logged exercises */}
       {loggedExercises.length > 0 && (
         <div className="mt-8">
           <h2 className="text-xl font-bold mb-4">Today's Exercises</h2>
@@ -153,6 +181,15 @@ export default function WorkoutLogForm({ user }) {
                   </li>
                 ))}
               </ul>
+              <button
+                className="mt-2 text-blue-600 underline"
+                onClick={() => {
+                  setExercise(ex.name);
+                  setSets([{ weight: '', reps: '', toFailure: false }]);
+                }}
+              >
+                Add more sets to this exercise
+              </button>
             </div>
           ))}
         </div>
