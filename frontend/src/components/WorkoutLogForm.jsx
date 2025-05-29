@@ -5,7 +5,7 @@ export default function WorkoutLogForm({ user }) {
   const [workoutId, setWorkoutId] = useState(null);
   const [exercise, setExercise] = useState('');
   const [sets, setSets] = useState([{ weight: '', reps: '', toFailure: false }]);
-  const [status, setStatus] = useState('');
+  const [refreshCount, setRefreshCount] = useState(0);
   const [loggedExercises, setLoggedExercises] = useState([]);
 
   // Load or create today's workout
@@ -45,7 +45,7 @@ export default function WorkoutLogForm({ user }) {
     if (user) loadOrCreateWorkout();
   }, [user]);
 
-  // Fetch exercises for today
+  // Fetch logged exercises
   useEffect(() => {
     const fetchLoggedExercises = async () => {
       if (!workoutId) return;
@@ -60,7 +60,7 @@ export default function WorkoutLogForm({ user }) {
     };
 
     fetchLoggedExercises();
-  }, [workoutId, status]);
+  }, [workoutId, refreshCount]);
 
   const handleChange = (i, field, value) => {
     const newSets = [...sets];
@@ -94,9 +94,9 @@ export default function WorkoutLogForm({ user }) {
     const { error: setsErr } = await supabase.from('sets').insert(setsWithExerciseId);
     if (setsErr) return console.error('Error saving sets:', setsErr.message);
 
-    setStatus('Saved!');
     setExercise('');
     setSets([{ weight: '', reps: '', toFailure: false }]);
+    setRefreshCount(c => c + 1); // 🔁 trigger re-fetch
   };
 
   return (
@@ -137,7 +137,6 @@ export default function WorkoutLogForm({ user }) {
           <button type="button" onClick={addSet} className="bg-gray-300 px-3 py-1 rounded">+ Set</button>
           <button type="submit" className="bg-blue-600 text-white px-3 py-1 rounded">Save</button>
         </div>
-        {status && <p className="text-green-500">{status}</p>}
       </form>
 
       {/* Display logged exercises */}
