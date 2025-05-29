@@ -8,6 +8,7 @@ export default function WorkoutLogForm({ user }) {
   const [refreshCount, setRefreshCount] = useState(0);
   const [loggedExercises, setLoggedExercises] = useState([]);
   const [dayType, setDayType] = useState('');
+  const [suggestions, setSuggestions] = useState({});
 
   useEffect(() => {
     const loadOrCreateWorkout = async () => {
@@ -62,6 +63,41 @@ export default function WorkoutLogForm({ user }) {
 
     fetchLoggedExercises();
   }, [workoutId, refreshCount]);
+
+  useEffect(() => {
+    const loadPreviousWorkoutSuggestions = async () => {
+      if (!dayType || !user) return;
+
+      const { data: previousWorkouts } = await supabase
+        .from('workouts')
+        .select('id, date')
+        .eq('user_id', user.id)
+        .eq('day_type', dayType)
+        .lt('date', new Date().toISOString().split('T')[0])
+        .order('date', { ascending: false })
+        .limit(1);
+
+      if (!previousWorkouts || previousWorkouts.length === 0) return;
+
+      const lastWorkoutId = previousWorkouts[0].id;
+      const { data: previousExercises } = await supabase
+        .from('exercises')
+        .select('name, sets (weight, reps)')
+        .eq('workout_id', lastWorkoutId);
+
+      const suggestMap = {};
+      for (const ex of previousExercises) {
+        const topSet = ex.sets.reduce((a, b) => (+a.weight > +b.weight ? a : b), { weight: 0 });
+        suggestMap[ex.name.toLowerCase()] = {
+          lastWeight: topSet.weight,
+          suggested: parseFloat(topSet.weight) + 5
+        };
+      }
+      setSuggestions(suggestMap);
+    };
+
+    loadPreviousWorkoutSuggestions();
+  }, [dayType, user]);
 
   const handleChange = (i, field, value) => {
     const newSets = [...sets];
@@ -137,6 +173,11 @@ export default function WorkoutLogForm({ user }) {
           placeholder="Exercise name"
           className="border w-full p-2"
         />
+        {suggestions[exercise.toLowerCase()] && (
+          <p className="text-sm text-blue-600">
+            Last: {suggestions[exercise.toLowerCase()].lastWeight} lbs → Try: {suggestions[exercise.toLowerCase()].suggested} lbs
+          </p>
+        )}
         {sets.map((set, i) => (
           <div key={i} className="flex space-x-2">
             <input
