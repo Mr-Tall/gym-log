@@ -140,14 +140,14 @@ export default function WorkoutLogForm({ user }) {
           value={title}
           onChange={(e) => setTitle(e.target.value)}
           placeholder="Workout Title (e.g., Day 1)"
-          className="b-full p-2 rounded placeholder-gray-500 border border-gray-300"
+          className="w-full p-2 rounded placeholder-gray-500 border border-gray-300"
         />
         <input
           style={{ backgroundColor: '#fff', color: '#000' }}
           value={exercise}
           onChange={(e) => setExercise(e.target.value)}
           placeholder="Exercise name"
-          className="b-full p-2 rounded placeholder-gray-500 border border-gray-300"
+          className="w-full p-2 rounded placeholder-gray-500 border border-gray-300"
         />
         {sets.map((set, i) => (
           <div key={i} className="flex space-x-2">
