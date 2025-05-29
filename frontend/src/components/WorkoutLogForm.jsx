@@ -50,7 +50,7 @@ export default function WorkoutLogForm({ user }) {
 
       const { data: exercises, error } = await supabase
         .from('exercises')
-        .select('id, name, sets (weight, reps, to_failure)')
+        .select('id, name, sets (id, weight, reps, to_failure)')
         .eq('workout_id', workoutId);
 
       if (error) console.error('Fetch error:', error.message);
@@ -107,6 +107,18 @@ export default function WorkoutLogForm({ user }) {
     setRefreshCount(c => c + 1);
   };
 
+  const deleteSet = async (setId) => {
+    const { error } = await supabase.from('sets').delete().eq('id', setId);
+    if (error) console.error('Error deleting set:', error.message);
+    setRefreshCount(c => c + 1);
+  };
+
+  const deleteExercise = async (exerciseId) => {
+    const { error } = await supabase.from('exercises').delete().eq('id', exerciseId);
+    if (error) console.error('Error deleting exercise:', error.message);
+    setRefreshCount(c => c + 1);
+  };
+
   return (
     <>
       <form onSubmit={handleSubmit} className="space-y-4">
@@ -152,11 +164,27 @@ export default function WorkoutLogForm({ user }) {
           <h2 className="text-xl font-bold mb-4">Today's Exercises</h2>
           {loggedExercises.map((ex) => (
             <div key={ex.id} className="mb-6">
-              <h3 className="text-lg font-semibold">{ex.name}</h3>
+              <div className="flex justify-between items-center">
+                <h3 className="text-lg font-semibold">{ex.name}</h3>
+                <button
+                  onClick={() => deleteExercise(ex.id)}
+                  className="text-red-500 text-sm underline"
+                >
+                  Delete Exercise
+                </button>
+              </div>
               <ul className="ml-4 list-disc">
                 {ex.sets.map((set, i) => (
-                  <li key={i}>
-                    {set.weight} lbs × {set.reps} {set.to_failure ? '(to failure)' : ''}
+                  <li key={set.id} className="flex justify-between items-center">
+                    <span>
+                      {set.weight} lbs × {set.reps} {set.to_failure ? '(to failure)' : ''}
+                    </span>
+                    <button
+                      onClick={() => deleteSet(set.id)}
+                      className="text-sm text-red-500 ml-4"
+                    >
+                      Delete Set
+                    </button>
                   </li>
                 ))}
               </ul>
