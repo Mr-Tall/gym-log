@@ -7,8 +7,6 @@ export default function WorkoutLogForm({ user }) {
   const [sets, setSets] = useState([{ weight: '', reps: '', toFailure: false }]);
   const [refreshCount, setRefreshCount] = useState(0);
   const [loggedExercises, setLoggedExercises] = useState([]);
-  const [dayType, setDayType] = useState('');
-  const [suggestions, setSuggestions] = useState({});
 
   useEffect(() => {
     const loadOrCreateWorkout = async () => {
@@ -28,12 +26,10 @@ export default function WorkoutLogForm({ user }) {
 
       if (data) {
         setWorkoutId(data.id);
-        setDayType(data.day_type || '');
       } else {
-        if (!dayType) return;
         const { data: newWorkout, error: insertError } = await supabase
           .from('workouts')
-          .insert([{ user_id: user.id, date: today, day_type: dayType }])
+          .insert([{ user_id: user.id, date: today }])
           .select()
           .single();
 
@@ -46,7 +42,7 @@ export default function WorkoutLogForm({ user }) {
     };
 
     if (user) loadOrCreateWorkout();
-  }, [user, dayType]);
+  }, [user]);
 
   useEffect(() => {
     const fetchLoggedExercises = async () => {
@@ -63,41 +59,6 @@ export default function WorkoutLogForm({ user }) {
 
     fetchLoggedExercises();
   }, [workoutId, refreshCount]);
-
-  useEffect(() => {
-    const loadPreviousWorkoutSuggestions = async () => {
-      if (!dayType || !user) return;
-
-      const { data: previousWorkouts } = await supabase
-        .from('workouts')
-        .select('id, date')
-        .eq('user_id', user.id)
-        .eq('day_type', dayType)
-        .lt('date', new Date().toISOString().split('T')[0])
-        .order('date', { ascending: false })
-        .limit(1);
-
-      if (!previousWorkouts || previousWorkouts.length === 0) return;
-
-      const lastWorkoutId = previousWorkouts[0].id;
-      const { data: previousExercises } = await supabase
-        .from('exercises')
-        .select('name, sets (weight, reps)')
-        .eq('workout_id', lastWorkoutId);
-
-      const suggestMap = {};
-      for (const ex of previousExercises) {
-        const topSet = ex.sets.reduce((a, b) => (+a.weight > +b.weight ? a : b), { weight: 0 });
-        suggestMap[ex.name.toLowerCase()] = {
-          lastWeight: topSet.weight,
-          suggested: parseFloat(topSet.weight) + 5
-        };
-      }
-      setSuggestions(suggestMap);
-    };
-
-    loadPreviousWorkoutSuggestions();
-  }, [dayType, user]);
 
   const handleChange = (i, field, value) => {
     const newSets = [...sets];
@@ -148,24 +109,6 @@ export default function WorkoutLogForm({ user }) {
 
   return (
     <>
-      {!workoutId && (
-        <div className="mb-4">
-          <label className="block font-semibold">What kind of day is this?</label>
-          <select
-            value={dayType}
-            onChange={(e) => setDayType(e.target.value)}
-            className="border p-2 w-full"
-          >
-            <option value="">Select a workout type</option>
-            <option value="push">Push</option>
-            <option value="pull">Pull</option>
-            <option value="legs">Legs</option>
-            <option value="full">Full Body</option>
-            <option value="rest">Rest</option>
-          </select>
-        </div>
-      )}
-
       <form onSubmit={handleSubmit} className="space-y-4">
         <input
           value={exercise}
@@ -173,11 +116,6 @@ export default function WorkoutLogForm({ user }) {
           placeholder="Exercise name"
           className="border w-full p-2"
         />
-        {suggestions[exercise.toLowerCase()] && (
-          <p className="text-sm text-blue-600">
-            Last: {suggestions[exercise.toLowerCase()].lastWeight} lbs → Try: {suggestions[exercise.toLowerCase()].suggested} lbs
-          </p>
-        )}
         {sets.map((set, i) => (
           <div key={i} className="flex space-x-2">
             <input
