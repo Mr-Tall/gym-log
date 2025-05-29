@@ -1,13 +1,13 @@
 import { useEffect, useState } from 'react';
 import { supabase } from './supabaseClient';
 import WorkoutLogForm from './components/WorkoutLogForm';
-import WorkoutHistory from './components/WorkoutHistory';
+import Navbar from './components/Navbar';
 import AuthForm from './components/AuthForm';
-import Layout from './components/Layout'; // new layout component
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import WorkoutHistory from './components/WorkoutHistory';
 
 export default function App() {
   const [user, setUser] = useState(null);
+  const [view, setView] = useState('log'); // 'log' or 'history'
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => setUser(user));
@@ -16,28 +16,24 @@ export default function App() {
     });
   }, []);
 
+  const handleLogout = async () => {
+    const { error } = await supabase.auth.signOut();
+    if (!error) setUser(null);
+    else console.error('Logout error:', error.message);
+  };
+
   if (!user) return <AuthForm onLogin={setUser} />;
 
   return (
-    <Router>
-      <Routes>
-        <Route
-          path="/"
-          element={
-            <Layout user={user}>
-              <WorkoutLogForm user={user} />
-            </Layout>
-          }
-        />
-        <Route
-          path="/history"
-          element={
-            <Layout user={user}>
-              <WorkoutHistory user={user} />
-            </Layout>
-          }
-        />
-      </Routes>
-    </Router>
+    <>
+      <Navbar onLogout={handleLogout} onNavigate={setView} />
+      <main className="max-w-xl mx-auto mt-10 px-4">
+        {view === 'log' ? (
+          <WorkoutLogForm user={user} />
+        ) : (
+          <WorkoutHistory user={user} />
+        )}
+      </main>
+    </>
   );
 }
