@@ -66,9 +66,12 @@ export default function WorkoutLogForm({ user }) {
     if (exErr) return console.error('Error adding exercise:', exErr.message);
 
     const setsWithExerciseId = sets.map(set => ({
-      ...set,
+      weight: set.weight,
+      reps: set.reps,
+      to_failure: set.toFailure, // this matches your DB column
       exercise_id: exerciseData.id,
     }));
+
 
     const { error: setsErr } = await supabase.from('sets').insert(setsWithExerciseId);
     if (setsErr) return console.error('Error saving sets:', setsErr.message);
