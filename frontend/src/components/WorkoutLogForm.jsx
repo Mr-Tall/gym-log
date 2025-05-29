@@ -1,8 +1,47 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { supabase } from '../supabaseClient';
 
-export default function WorkoutLogForm({ onSubmit }) {
+export default function WorkoutLogForm({ user }) {
+  const [workoutId, setWorkoutId] = useState(null);
   const [exercise, setExercise] = useState('');
   const [sets, setSets] = useState([{ weight: '', reps: '', toFailure: false }]);
+  const [status, setStatus] = useState('');
+
+  useEffect(() => {
+    const loadOrCreateWorkout = async () => {
+      const today = new Date().toISOString().split('T')[0];
+
+      const { data, error } = await supabase
+        .from('workouts')
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('date', today)
+        .single();
+
+      if (error && error.code !== 'PGRST116') {
+        console.error('Error loading workout:', error.message);
+        return;
+      }
+
+      if (data) {
+        setWorkoutId(data.id);
+      } else {
+        // Create new workout
+        const { data: newWorkout, error: insertError } = await supabase
+          .from('workouts')
+          .insert([{ user_id: user.id, date: today }])
+          .select()
+          .single();
+        if (insertError) {
+          console.error('Error creating workout:', insertError.message);
+        } else {
+          setWorkoutId(newWorkout.id);
+        }
+      }
+    };
+
+    if (user) loadOrCreateWorkout();
+  }, [user]);
 
   const handleChange = (i, field, value) => {
     const newSets = [...sets];
@@ -14,9 +53,29 @@ export default function WorkoutLogForm({ onSubmit }) {
     setSets([...sets, { weight: '', reps: '', toFailure: false }]);
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    onSubmit({ exercise, sets });
+    if (!workoutId) return;
+
+    const { data: exerciseData, error: exErr } = await supabase
+      .from('exercises')
+      .insert([{ workout_id: workoutId, name: exercise }])
+      .select()
+      .single();
+
+    if (exErr) return console.error('Error adding exercise:', exErr.message);
+
+    const setsWithExerciseId = sets.map(set => ({
+      ...set,
+      exercise_id: exerciseData.id,
+    }));
+
+    const { error: setsErr } = await supabase.from('sets').insert(setsWithExerciseId);
+    if (setsErr) return console.error('Error saving sets:', setsErr.message);
+
+    setStatus('Saved!');
+    setExercise('');
+    setSets([{ weight: '', reps: '', toFailure: false }]);
   };
 
   return (
@@ -52,12 +111,11 @@ export default function WorkoutLogForm({ onSubmit }) {
           </label>
         </div>
       ))}
-      <button type="button" onClick={addSet} className="bg-gray-300 px-3 py-1 rounded">
-        + Set
-      </button>
-      <button type="submit" className="bg-blue-600 text-white px-3 py-1 rounded ml-2">
-        Save
-      </button>
+      <div className="space-x-2">
+        <button type="button" onClick={addSet} className="bg-gray-300 px-3 py-1 rounded">+ Set</button>
+        <button type="submit" className="bg-blue-600 text-white px-3 py-1 rounded">Save</button>
+      </div>
+      {status && <p className="text-green-500">{status}</p>}
     </form>
   );
 }
