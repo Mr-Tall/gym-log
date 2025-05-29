@@ -10,28 +10,29 @@ export default function WorkoutLogForm({ user }) {
   const [loggedExercises, setLoggedExercises] = useState([]);
 
   useEffect(() => {
-    const fetchExistingWorkout = async () => {
+    if (!user) return;
+
+    const checkExistingWorkoutWithExercises = async () => {
       const today = new Date().toISOString().split('T')[0];
-
-      const { data, error } = await supabase
+      const { data: workouts, error } = await supabase
         .from('workouts')
-        .select('*')
+        .select('id, title, exercises (id)')
         .eq('user_id', user.id)
-        .eq('date', today)
-        .single();
+        .eq('date', today);
 
-      if (error && error.code !== 'PGRST116') {
-        console.error('Error fetching workout:', error.message);
+      if (error) {
+        console.error('Error checking existing workouts:', error.message);
         return;
       }
 
-      if (data) {
-        setWorkoutId(data.id);
-        setTitle(data.title || '');
+      const existing = workouts.find(w => w.exercises.length > 0);
+      if (existing) {
+        setWorkoutId(existing.id);
+        setTitle(existing.title || '');
       }
     };
 
-    if (user) fetchExistingWorkout();
+    checkExistingWorkoutWithExercises();
   }, [user]);
 
   useEffect(() => {
