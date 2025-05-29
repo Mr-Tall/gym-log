@@ -17,10 +17,15 @@ export default function App() {
   }, []);
 
   const handleLogout = async () => {
-    const { error } = await supabase.auth.signOut();
-    if (!error) setUser(null);
-    else console.error('Logout error:', error.message);
-  };
+  const { error } = await supabase.auth.signOut();
+  if (!error) {
+    setUser(null);
+    setView('log'); // reset view as well
+  } else {
+    console.error('Logout error:', error.message);
+  }
+};
+
 
   if (!user) return <AuthForm onLogin={setUser} />;
 
