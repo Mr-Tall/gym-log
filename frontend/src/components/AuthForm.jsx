@@ -140,7 +140,7 @@ export default function WorkoutLogForm({ user }) {
           value={title}
           onChange={(e) => setTitle(e.target.value)}
           placeholder="Workout Title (e.g., Day 1)"
-          className="w-full p-2 rounded placeholder-gray-500 border border-gray-300"
+          className="b-full p-2 rounded placeholder-gray-500 border border-gray-300"
         />
         <input
           style={{ backgroundColor: '#fff', color: '#000' }}
