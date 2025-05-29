@@ -136,7 +136,7 @@ export default function WorkoutLogForm({ user }) {
     <>
       <form onSubmit={handleSubmit} className="space-y-4">
         <input
-          style={{ backgroundColor: '#ffffff', color: '#000000' }}
+          style={{ backgroundColor: '#fff', color: '#000' }}
           value={title}
           onChange={(e) => setTitle(e.target.value)}
           placeholder="Workout Title (e.g., Day 1)"
