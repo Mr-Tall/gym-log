@@ -139,13 +139,13 @@ export default function WorkoutLogForm({ user }) {
           value={title}
           onChange={(e) => setTitle(e.target.value)}
           placeholder="Workout Title (e.g., Day 1)"
-          className="w-full p-2 rounded bg-zinc-800 text-black placeholder-gray-400 border border-zinc-700"
+          className="w-full p-2 rounded bg-white text-black placeholder-gray-500 border border-gray-300"
         />
         <input
           value={exercise}
           onChange={(e) => setExercise(e.target.value)}
           placeholder="Exercise name"
-          className="w-full p-2 rounded bg-zinc-800 text-black placeholder-gray-400 border border-zinc-700"
+          className="w-full p-2 rounded bg-white text-black placeholder-gray-500 border border-gray-300"
         />
         {sets.map((set, i) => (
           <div key={i} className="flex space-x-2">
@@ -153,13 +153,13 @@ export default function WorkoutLogForm({ user }) {
               value={set.weight}
               onChange={(e) => handleChange(i, 'weight', e.target.value)}
               placeholder="Weight"
-              className="p-2 rounded bg-zinc-800 text-black placeholder-gray-400 border border-zinc-700 w-1/3"
+              className="p-2 rounded bg-white text-black placeholder-gray-500 border border-gray-300 w-1/3"
             />
             <input
               value={set.reps}
               onChange={(e) => handleChange(i, 'reps', e.target.value)}
               placeholder="Reps"
-              className="p-2 rounded bg-zinc-800 text-black placeholder-gray-400 border border-zinc-700 w-1/3"
+              className="p-2 rounded bg-white text-black placeholder-gray-500 border border-gray-300 w-1/3"
             />
             <label className="flex items-center">
               <input
