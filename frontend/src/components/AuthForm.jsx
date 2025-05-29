@@ -8,13 +8,21 @@ export default function AuthForm({ onLogin }) {
   const [error, setError] = useState('');
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
-    setError('');
-    const fn = isLogin ? supabase.auth.signInWithPassword : supabase.auth.signUp;
-    const { data, error } = await fn({ email, password });
-    if (error) setError(error.message);
-    else onLogin(data.user);
-  };
+  e.preventDefault();
+  setError('');
+
+  let result;
+  if (isLogin) {
+    result = await supabase.auth.signInWithPassword({ email, password });
+  } else {
+    result = await supabase.auth.signUp({ email, password });
+  }
+
+  const { data, error } = result;
+  if (error) setError(error.message);
+  else onLogin(data.user);
+};
+
 
   return (
     <div className="max-w-md mx-auto mt-10 bg-white p-6 rounded shadow">
